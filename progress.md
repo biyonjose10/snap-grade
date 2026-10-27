@@ -24,3 +24,6 @@ Evidence (dev server, fixture mode `start.ps1 -Fixture`, every model step labell
 - B02 test editor: sample test loads; edits persist to localStorage.
 
 Not verified (needs NEBIUS_API_KEY / a real phone): B01, B03 on a phone, B04, B05, B09 with real calls, B10, B12, B13.
+- B02 verified properly: edited the title → reload → editor shows the saved title. Found and fixed a bug on the way:
+  after a reload, grading used the sample test unless the editor was reopened. Now `grade()` loads the saved test
+  first; verified: saved a 2-question test, reloaded, graded (fixture) → review shows 2 questions, 2.5/4.

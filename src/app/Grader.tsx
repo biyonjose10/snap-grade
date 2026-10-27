@@ -84,12 +84,23 @@ export default function Grader() {
   const active = scripts.find((s) => s.id === activeId) ?? scripts[0];
   const update = (id: string, fn: (s: Script) => Script) => setScripts((all) => all.map((s) => (s.id === id ? fn(s) : s)));
 
+  // The saved test is read from this browser on first use (not at render, which is prerendered).
+  const testLoaded = useRef(false);
+  function currentTest(): TestPaper {
+    if (testLoaded.current) return test;
+    testLoaded.current = true;
+    const t = loadTest();
+    setTest(t);
+    return t;
+  }
+
   function openTest() {
-    if (!testOpen) setTest(loadTest());
+    if (!testOpen) currentTest();
     setTestOpen((o) => !o);
   }
 
   function saveTest(t: TestPaper) {
+    testLoaded.current = true;
     setTest(t);
     try {
       localStorage.setItem("second-reader.test", JSON.stringify(t));
@@ -105,12 +116,13 @@ export default function Grader() {
   }
 
   async function grade(s: Script) {
+    const t = currentTest();
     update(s.id, (x) => ({ ...x, status: "grading", steps: {}, readings: [], audit: null, calls: [], error: null }));
     try {
       const res = await fetch("/api/grade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test, pages: s.pages }),
+        body: JSON.stringify({ test: t, pages: s.pages }),
       });
       if (!res.ok || !res.body) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
