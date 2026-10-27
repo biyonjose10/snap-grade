@@ -1,0 +1,22 @@
+{
+  "entry": "B — Snap-Grade (public name: Second Reader)",
+  "rule": "passes flips to true only after verifying in the running app; record the evidence (command + output or screenshot path) in progress.md",
+  "features": [
+    {"id": "B01", "tier": "must", "description": "Smoke test: Nemotron 3.5 Super VL accepts an image through Token Factory and transcribes a sample handwritten page", "test": "run the smoke script on a sample image; the transcription matches the page reasonably", "passes": false},
+    {"id": "B02", "tier": "must", "description": "Create a test: questions, max marks, typed rubric", "test": "create a 4-question test; it persists in the browser after reload", "passes": false},
+    {"id": "B03", "tier": "must", "description": "Multi-page phone capture in the browser, resized on the phone to ~1600 px before upload", "test": "capture 3 pages on a real phone; each upload is under 1 MB", "passes": false},
+    {"id": "B04", "tier": "must", "description": "Reader (Super VL) returns per-question text + legibility confidence", "test": "the log shows Super VL calls; low-legibility answers come back with low confidence", "passes": false},
+    {"id": "B05", "tier": "must", "description": "Marker (Nemotron 3 Ultra) gives partial marks + one-line reason per answer against the rubric", "test": "the log shows an Ultra call with a request ID; every answer has a mark and reason", "passes": false},
+    {"id": "B06", "tier": "must", "description": "Auditor in plain code: totals, max-mark caps, missing answers, low-confidence flags", "test": "unit test with a crafted marks set; in the UI a missing answer is flagged yellow", "passes": false},
+    {"id": "B07", "tier": "must", "description": "Teacher review: approve or edit each mark; nothing final until approved", "test": "edit a mark; the total updates; export is disabled until all are approved", "passes": false},
+    {"id": "B08", "tier": "must", "description": "Marks register CSV export", "test": "the downloaded CSV opens in a spreadsheet with roll no, per-question marks, total", "passes": false},
+    {"id": "B09", "tier": "must", "description": "Model chip on every step + call log panel", "test": "after grading one script the panel lists Super VL and Ultra calls", "passes": false},
+    {"id": "B10", "tier": "must", "description": "Spend guard: per-IP limit + global daily ceiling", "test": "exceed a low ceiling locally; a friendly message appears and no model call is made", "passes": false},
+    {"id": "B11", "tier": "must", "description": "Answer-booklet design tokens from PLAN.md, phone-first capture screen", "test": "visual check at 375 px and desktop; no horizontal scroll", "passes": false},
+    {"id": "B12", "tier": "must", "description": "Deployed, protection off, full flow works on a real phone and in incognito", "test": "Claude clicks through in incognito; you capture 5 mock scripts on your phone", "passes": false},
+    {"id": "B13", "tier": "must", "description": "Agreement rate vs. your hand marking on the 5 mock scripts, written in the README", "test": "compare the CSV with the hand marks; the number is in the README", "passes": false},
+    {"id": "B14", "tier": "cut-if-late", "description": "Answer-key photo becomes the rubric (Super VL)", "test": "photograph a typed key; the rubric fields fill", "passes": false},
+    {"id": "B15", "tier": "cut-if-late", "description": "Totalling-check mode: read the teacher's own margin marks and catch addition errors", "test": "a script with a deliberate totalling error is caught", "passes": false},
+    {"id": "B16", "tier": "cut-if-late", "description": "Class insight: which question lost the most marks and why", "test": "after 5 scripts a short insight appears with the question number", "passes": false}
+  ]
+}

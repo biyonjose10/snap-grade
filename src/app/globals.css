@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/* Design tokens: "answer booklet and red pen" (see ../PLAN.md) */
+:root {
+  --booklet: #fbfcfe;
+  --rule: #9db7d5;
+  --ballpoint: #1b2a6b;
+  --redpen: #d7263d;
+  --highlight: #ffe45c;
+  --graphite: #2b2b2b;
+  --desk: #eef2f7;
+}
+
+@theme inline {
+  --color-booklet: var(--booklet);
+  --color-rule: var(--rule);
+  --color-ballpoint: var(--ballpoint);
+  --color-redpen: var(--redpen);
+  --color-highlight: var(--highlight);
+  --color-graphite: var(--graphite);
+  --color-desk: var(--desk);
+  --font-sans: var(--font-body);
+  --font-pen: var(--font-pen);
+  --font-mono: var(--font-code);
+}
+
+body {
+  background: var(--desk);
+  color: var(--graphite);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+/* Ruled answer-booklet paper: faint blue lines and a red margin rule. */
+.ruled {
+  background-color: var(--booklet);
+  background-image:
+    linear-gradient(to right, transparent 46px, rgba(215, 38, 61, 0.35) 46px, rgba(215, 38, 61, 0.35) 47px, transparent 47px),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(157, 183, 213, 0.55) 31px, rgba(157, 183, 213, 0.55) 32px);
+}
