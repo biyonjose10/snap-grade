@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { SAMPLE_TEST } from "@/lib/sample";
 import { finalTotal, toCsv } from "@/lib/auditor";
-import type { Audit, GradeEvent, ModelCall, Question, Reading, StepId, TestPaper } from "@/lib/types";
+import type { Audit, FlagKind, GradeEvent, ModelCall, Question, Reading, StepId, TestPaper } from "@/lib/types";
 
 type Status = "capturing" | "grading" | "review" | "approved" | "failed";
 
@@ -80,6 +80,7 @@ export default function Grader() {
   const [scripts, setScripts] = useState<Script[]>([newScript(1)]);
   const [activeId, setActiveId] = useState(scripts[0].id);
   const fileRef = useRef<HTMLInputElement>(null);
+  const reviewRef = useRef<HTMLDivElement>(null);
 
   const active = scripts.find((s) => s.id === activeId) ?? scripts[0];
   const update = (id: string, fn: (s: Script) => Script) => setScripts((all) => all.map((s) => (s.id === id ? fn(s) : s)));
@@ -143,6 +144,8 @@ export default function Grader() {
           if (line) apply(s.id, JSON.parse(line.slice(6)) as GradeEvent);
         }
       }
+      // On a phone the review sits below the register; bring it into view once the marks are in.
+      setTimeout(() => reviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     } catch (e) {
       update(s.id, (x) => ({ ...x, status: "failed", error: `Connection lost: ${String(e)}` }));
     }
@@ -293,13 +296,17 @@ export default function Grader() {
           />
         </div>
 
-        <div className="min-w-0">
+        <div ref={reviewRef} className="min-w-0 scroll-mt-4">
           {active.audit ? (
             <Review
               script={active}
               test={test}
               onMark={(no, v) => update(active.id, (s) => ({ ...s, marks: { ...s.marks, [no]: v } }))}
               onApprove={() => update(active.id, (s) => ({ ...s, status: s.status === "approved" ? "review" : "approved" }))}
+              onNext={() => {
+                nextScript();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
             />
           ) : (
             <HowItWorks />
@@ -454,31 +461,43 @@ function Review({
   test,
   onMark,
   onApprove,
+  onNext,
 }: {
   script: Script;
   test: TestPaper;
   onMark: (no: string, v: number | null) => void;
   onApprove: () => void;
+  onNext: () => void;
 }) {
   const a = script.audit!;
   const locked = script.status === "approved";
   const unresolved = a.questions.some((q) => script.marks[q.questionNo] === null || script.marks[q.questionNo] === undefined);
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b-2 border-ballpoint pb-2">
-        <h2 className="text-xl font-bold text-ballpoint">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-ballpoint pb-2">
+        <h2 className="flex items-baseline text-xl font-bold text-ballpoint">
           {script.roll}
           <span className="ml-3 font-pen text-3xl text-redpen">
             {finalTotal(script.marks)}/{a.max}
           </span>
+          {locked && (
+            <span className="ml-3 inline-block -rotate-6 border-2 border-redpen px-2 font-pen text-2xl leading-tight text-redpen">Checked ✓</span>
+          )}
         </h2>
-        <button
-          onClick={onApprove}
-          disabled={unresolved && !locked}
-          className={`px-4 py-2 font-bold ${locked ? "border-2 border-ballpoint text-ballpoint" : "bg-ballpoint text-booklet"} disabled:opacity-40`}
-        >
-          {locked ? "Approved — undo" : "Approve these marks"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={onApprove}
+            disabled={unresolved && !locked}
+            className={`px-4 py-2 font-bold ${locked ? "border-2 border-ballpoint text-ballpoint" : "bg-ballpoint text-booklet"} disabled:opacity-40`}
+          >
+            {locked ? "Undo approval" : "Approve these marks"}
+          </button>
+          {locked && (
+            <button onClick={onNext} className="bg-redpen px-4 py-2 font-bold text-booklet">
+              Next script →
+            </button>
+          )}
+        </div>
       </div>
       {a.flags.length > 0 && (
         <ul className="space-y-1">
@@ -512,9 +531,38 @@ function Review({
                 <p className="mt-1 whitespace-pre-wrap text-ballpoint">
                   {q.reading ? (q.reading.present ? q.reading.text : <em className="text-graphite/60">left blank</em>) : <em className="text-graphite/60">not found</em>}
                 </p>
+                {a.flags.some((f) => f.questionNo === q.questionNo) && (
+                  <p className="mt-2 flex flex-wrap gap-1">
+                    {a.flags
+                      .filter((f) => f.questionNo === q.questionNo)
+                      .map((f, i) => (
+                        <span key={i} className="bg-highlight px-1.5 font-mono text-[11px] font-bold uppercase tracking-wide text-graphite">
+                          {FLAG_LABEL[f.kind]}
+                        </span>
+                      ))}
+                  </p>
+                )}
                 <p className="mt-2 font-pen text-xl leading-tight text-redpen">{q.reason}</p>
                 {q.reading && (
                   <p className="mt-1 font-mono text-[10px] text-graphite/60">read with {Math.round(q.reading.legibility * 100)}% confidence</p>
+                )}
+                {!locked && (
+                  <div className="mt-2 flex items-center gap-2" aria-label={`Adjust marks for question ${q.questionNo}`}>
+                    {[-0.5, 0.5].map((d) => {
+                      const cur = script.marks[q.questionNo] ?? 0;
+                      const next = Math.min(q.max, Math.max(0, cur + d));
+                      return (
+                        <button
+                          key={d}
+                          onClick={() => onMark(q.questionNo, next)}
+                          disabled={next === cur && script.marks[q.questionNo] !== null && script.marks[q.questionNo] !== undefined}
+                          className="min-w-12 border border-ballpoint px-2 py-1 font-mono text-sm text-ballpoint disabled:opacity-30"
+                        >
+                          {d < 0 ? "−½" : "+½"}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </li>
@@ -535,6 +583,15 @@ function Review({
   );
 }
 
+const FLAG_LABEL: Record<FlagKind, string> = {
+  illegible: "Hard to read",
+  missing: "Left blank",
+  over_max: "Over max, capped",
+  low_confidence: "Marker unsure",
+  not_read: "Not read",
+  extra_answer: "Extra answer",
+};
+
 // Keeps what the teacher is typing ("1.") as text, and only commits complete numbers.
 function MarkInput({
   label,
@@ -550,6 +607,12 @@ function MarkInput({
   onChange: (v: number | null) => void;
 }) {
   const [draft, setDraft] = useState(value === null ? "" : String(value));
+  // Follow changes made elsewhere (the ½ buttons) without clobbering a half-typed "1.".
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    if (value === null ? draft !== "" : Number(draft) !== value) setDraft(value === null ? "" : String(value));
+  }
   return (
     <input
       aria-label={label}
