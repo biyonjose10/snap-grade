@@ -27,3 +27,10 @@ Not verified (needs NEBIUS_API_KEY / a real phone): B01, B03 on a phone, B04, B0
 - B02 verified properly: edited the title → reload → editor shows the saved title. Found and fixed a bug on the way:
   after a reload, grading used the sample test unless the editor was reopened. Now `grade()` loads the saved test
   first; verified: saved a 2-question test, reloaded, graded (fixture) → review shows 2 questions, 2.5/4.
+
+## 2026-10-29 ~00:30 IST — UI pass from a Stitch design review (9dd5469)
+Kept from Stitch: −½/+½ buttons per answer, flag labels on each flagged answer card, "Checked ✓" stamp on approval,
+"Next script →" after approval, auto-scroll to the review when grading ends. Rejected: live camera HUD, handwriting
+crops (the reader returns no boxes), invented content.
+Evidence (fixture mode, no API calls): +½ on Q1 → 2, −½ on Q2 → 0.5, total 4/10; approve → stamp + CSV enabled;
+Next script → DEMO-02, DEMO-01 kept; typing "1.5" still works (total 5/10). `npm test` 3/3; deployed.
