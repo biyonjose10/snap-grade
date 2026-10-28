@@ -2,6 +2,7 @@
 // model access exists. The API route refuses to use it in production builds. The audit is real.
 import type { GradeEvent, ProposedMark, Reading, TestPaper } from "./types";
 import { audit } from "./auditor";
+import { checkTotals } from "./classwork";
 
 export function fixtureEvents(test: TestPaper): GradeEvent[] {
   const tag = " (dev fixture — not a real run)";
@@ -25,4 +26,24 @@ export function fixtureEvents(test: TestPaper): GradeEvent[] {
     { type: "step", step: "audit", status: "done", actor: "Auditor (code, no model)", detail: "audit output is real" },
     { type: "done" },
   ];
+}
+
+// Totalling check sample: the teacher's written total is off by 1. The check itself is real.
+export function totalsFixture(test: TestPaper) {
+  const marks = test.questions.map((q, i) => ({ questionNo: q.no, mark: Math.max(0, q.maxMarks - (i % 2 ? 1 : 0.5)), legibility: i === 2 ? 0.55 : 0.9 }));
+  const sum = marks.reduce((s, m) => s + m.mark, 0);
+  return { check: checkTotals(test, marks, sum + 1, 0.95), calls: [], reader: "Nemotron 3.5 Super VL (dev fixture — not a real run)" };
+}
+
+// Answer-key sample, shaped like the sample test.
+export function rubricFixture() {
+  return {
+    title: "Basic Electrical Engineering — Internal Test 1 (from key photo, dev fixture)",
+    questions: [
+      { no: "1", maxMarks: 2, prompt: "State Ohm's law.", rubric: "Current proportional to voltage (1); at constant temperature (½); V = IR (½)" },
+      { no: "2", maxMarks: 3, prompt: "Define RMS value.", rubric: "Heating-effect definition (2); Irms = Imax/√2 (1)" },
+    ],
+    calls: [],
+    reader: "Nemotron 3.5 Super VL (dev fixture — not a real run)",
+  };
 }

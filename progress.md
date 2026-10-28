@@ -34,3 +34,18 @@ Kept from Stitch: −½/+½ buttons per answer, flag labels on each flagged answ
 crops (the reader returns no boxes), invented content.
 Evidence (fixture mode, no API calls): +½ on Q1 → 2, −½ on Q2 → 0.5, total 4/10; approve → stamp + CSV enabled;
 Next script → DEMO-02, DEMO-01 kept; typing "1.5" still works (total 5/10). `npm test` 3/3; deployed.
+
+## 2026-10-29 ~00:40 IST — Tier 1 + 2 features, built without any model calls (only fixture tests)
+- Agreement with hand marks (`classwork.ts` agreement + ClassPanel): teacher types own paper marks; compares with the first
+  pass before edits; reports within-½, exact, mean gap, and how many big gaps were already flagged. Fixture check: 7/8
+  within ½, the 1 big gap was flagged (matches hand calculation).
+- Totalling check mode (`/api/totals`, TOTALS_SYSTEM, `checkTotals`): Super VL reads margin marks + written total; code adds
+  up and flags over-max, non-half marks, missing/unreadable marks and total mismatch. Fixture: "off by 1" caught.
+  NOT run against Super VL yet.
+- Mark one question across the class (ByQuestion view), class insight by code (weakest question), cost and time per
+  script, "snap the next script while this one is read".
+- Review shows flagged answers first, folds confident ones, page thumbnails with full-screen zoom.
+- Rubric from an answer-key photo (`/api/rubric`, KEY_SYSTEM): teacher confirms before it replaces the test. Fixture
+  only; NOT run against Super VL yet.
+- Bug found and fixed in testing: the totals panel cleared the file input before copying the photos (pages vanished).
+Evidence: `npm test` 7/7; fixture click-through of every panel; 375 px frame scrollWidth = clientWidth in both modes.

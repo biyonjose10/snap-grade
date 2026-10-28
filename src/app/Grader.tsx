@@ -4,18 +4,21 @@ import { useRef, useState } from "react";
 import { SAMPLE_TEST } from "@/lib/sample";
 import { finalTotal, toCsv } from "@/lib/auditor";
 import type { Audit, FlagKind, GradeEvent, ModelCall, Question, Reading, StepId, TestPaper } from "@/lib/types";
+import { ByQuestion, ClassPanel, Lightbox, TotalsPanel } from "./Extras";
 
 type Status = "capturing" | "grading" | "review" | "approved" | "failed";
 
-interface Script {
+export interface Script {
   id: string;
   roll: string;
   pages: string[]; // resized JPEG data URLs, kept only in this browser
   status: Status;
   steps: Partial<Record<StepId, { status: string; actor: string; detail?: string }>>;
   readings: Reading[];
-  audit: Audit | null;
+  audit: Audit | null; // the first pass as proposed; never edited
   marks: Record<string, number | null>; // teacher's final marks (start = proposed)
+  hand: Record<string, number | null>; // teacher's own paper marks, for the agreement check
+  ms: number | null; // how long reading and marking took
   calls: ModelCall[];
   error: string | null;
 }
@@ -69,6 +72,8 @@ function newScript(n: number): Script {
     readings: [],
     audit: null,
     marks: {},
+    hand: {},
+    ms: null,
     calls: [],
     error: null,
   };
@@ -79,6 +84,8 @@ export default function Grader() {
   const [testOpen, setTestOpen] = useState(false);
   const [scripts, setScripts] = useState<Script[]>([newScript(1)]);
   const [activeId, setActiveId] = useState(scripts[0].id);
+  const [mode, setMode] = useState<"mark" | "totals">("mark");
+  const [view, setView] = useState<"script" | "question">("script");
   const fileRef = useRef<HTMLInputElement>(null);
   const reviewRef = useRef<HTMLDivElement>(null);
 
@@ -118,7 +125,8 @@ export default function Grader() {
 
   async function grade(s: Script) {
     const t = currentTest();
-    update(s.id, (x) => ({ ...x, status: "grading", steps: {}, readings: [], audit: null, calls: [], error: null }));
+    const t0 = Date.now();
+    update(s.id, (x) => ({ ...x, status: "grading", steps: {}, readings: [], audit: null, calls: [], error: null, ms: null }));
     try {
       const res = await fetch("/api/grade", {
         method: "POST",
@@ -144,8 +152,13 @@ export default function Grader() {
           if (line) apply(s.id, JSON.parse(line.slice(6)) as GradeEvent);
         }
       }
-      // On a phone the review sits below the register; bring it into view once the marks are in.
-      setTimeout(() => reviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      update(s.id, (x) => ({ ...x, ms: x.audit ? Date.now() - t0 : null }));
+      // On a phone the review sits below the register; bring it into view once the marks are in,
+      // unless the teacher has already moved on to snapping the next script.
+      setActiveId((cur) => {
+        if (cur === s.id) setTimeout(() => reviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+        return cur;
+      });
     } catch (e) {
       update(s.id, (x) => ({ ...x, status: "failed", error: `Connection lost: ${String(e)}` }));
     }
@@ -195,7 +208,28 @@ export default function Grader() {
         <p className="font-mono text-xs text-graphite/70">Nebius Token Factory · NVIDIA Nemotron Super VL + Ultra</p>
       </header>
 
-      <section className="mt-5 border border-rule bg-booklet">
+      <nav className="mt-4 flex gap-1 border-b border-rule" aria-label="Mode">
+        {(
+          [
+            ["mark", "First-pass marking"],
+            ["totals", "Totalling check"],
+          ] as const
+        ).map(([m, label]) => (
+          <button
+            key={m}
+            onClick={() => {
+              if (m === "totals") currentTest();
+              setMode(m);
+            }}
+            aria-pressed={mode === m}
+            className={`-mb-px border border-b-0 px-3 py-2 text-sm font-bold ${mode === m ? "border-rule bg-booklet text-ballpoint" : "border-transparent text-graphite/60"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      <section className="border border-t-0 border-rule bg-booklet">
         <button onClick={openTest} aria-expanded={testOpen} className="flex w-full items-center justify-between px-4 py-3 text-left">
           <span>
             <span className="block text-xs uppercase tracking-wider text-graphite/60">Test and rubric</span>
@@ -209,7 +243,13 @@ export default function Grader() {
         {testOpen && <TestEditor test={test} onChange={saveTest} />}
       </section>
 
-      <section className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+      {mode === "totals" && (
+        <section className="mt-6">
+          <TotalsPanel test={test} resize={resize} />
+        </section>
+      )}
+
+      <section className={`mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] ${mode === "mark" ? "" : "hidden"}`}>
         <div className="min-w-0 space-y-4">
           <div className="ruled border border-rule p-4 pl-14">
             <div className="flex items-center justify-between gap-2">
@@ -279,6 +319,11 @@ export default function Grader() {
             )}
 
             {active.status !== "capturing" && <Steps script={active} />}
+            {active.status === "grading" && (
+              <button onClick={nextScript} className="mt-3 text-sm font-bold text-ballpoint underline">
+                Snap the next script while this one is read →
+              </button>
+            )}
             {active.error && (
               <p role="alert" className="mt-3 bg-highlight/60 px-2 py-1 text-sm">
                 {active.error}
@@ -294,11 +339,34 @@ export default function Grader() {
             onAdd={nextScript}
             csv={csv}
           />
+          <ClassPanel test={test} scripts={scripts} onHand={(id, no, v) => update(id, (s) => ({ ...s, hand: { ...s.hand, [no]: v } }))} />
         </div>
 
         <div ref={reviewRef} className="min-w-0 scroll-mt-4">
-          {active.audit ? (
+          {scripts.filter((s) => s.audit).length > 1 && (
+            <div className="mb-3 flex gap-1 text-sm" role="group" aria-label="Review by">
+              {(
+                [
+                  ["script", "One script"],
+                  ["question", "One question, whole class"],
+                ] as const
+              ).map(([v, label]) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  aria-pressed={view === v}
+                  className={`border px-3 py-1 font-bold ${view === v ? "border-ballpoint bg-ballpoint text-booklet" : "border-rule text-ballpoint"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {view === "question" && scripts.filter((s) => s.audit).length > 1 ? (
+            <ByQuestion test={test} scripts={scripts} onMark={(id, no, v) => update(id, (s) => ({ ...s, marks: { ...s.marks, [no]: v } }))} />
+          ) : active.audit ? (
             <Review
+              key={active.id}
               script={active}
               test={test}
               onMark={(no, v) => update(active.id, (s) => ({ ...s, marks: { ...s.marks, [no]: v } }))}
@@ -325,8 +393,53 @@ export default function Grader() {
 function TestEditor({ test, onChange }: { test: TestPaper; onChange: (t: TestPaper) => void }) {
   const setQ = (i: number, q: Partial<Question>) => onChange({ ...test, questions: test.questions.map((x, j) => (j === i ? { ...x, ...q } : x)) });
   const field = "w-full border border-rule bg-booklet px-2 py-1 text-sm focus:border-ballpoint focus:outline-none";
+  const keyRef = useRef<HTMLInputElement>(null);
+  const [keyState, setKeyState] = useState<{ busy: boolean; note: string | null }>({ busy: false, note: null });
+
+  // Answer key photo -> questions and rubric (Super VL). Replaces the test only after the teacher confirms.
+  async function fromKey(files: File[]) {
+    if (!files.length) return;
+    setKeyState({ busy: true, note: null });
+    try {
+      const pages = await Promise.all(files.slice(0, 3).map(resize));
+      const res = await fetch("/api/rubric", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pages }) });
+      const j = (await res.json()) as { error?: string; title?: string; questions?: Question[]; reader?: string };
+      if (!res.ok || !j.questions) return setKeyState({ busy: false, note: j.error ?? `Request failed (${res.status})` });
+      const missing = j.questions.filter((q) => !q.maxMarks).length;
+      if (!window.confirm(`Replace the current ${test.questions.length} questions with the ${j.questions.length} read from the key?`)) {
+        return setKeyState({ busy: false, note: null });
+      }
+      onChange({ title: j.title || test.title, questions: j.questions.map((q) => ({ ...q, maxMarks: q.maxMarks || 1 })) });
+      setKeyState({
+        busy: false,
+        note: `Filled from the key by ${j.reader ?? "Super VL"}. Check every rubric before grading${missing ? `; ${missing} question(s) had no marks printed, set to 1` : ""}.`,
+      });
+    } catch (e) {
+      setKeyState({ busy: false, note: `Connection lost: ${String(e)}` });
+    }
+  }
+
   return (
     <div className="space-y-4 border-t border-rule px-4 py-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          ref={keyRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            fromKey([...(e.target.files ?? [])]);
+            e.target.value = "";
+          }}
+        />
+        <button onClick={() => keyRef.current?.click()} disabled={keyState.busy} className="border-2 border-ballpoint px-3 py-1.5 text-sm font-bold text-ballpoint disabled:opacity-40">
+          {keyState.busy ? "Reading the key…" : "Fill from a photo of the answer key"}
+        </button>
+        <span className="font-mono text-[11px] text-graphite/60">Nemotron 3.5 Super VL · you check it before use</span>
+      </div>
+      {keyState.note && <p className="bg-highlight/50 px-2 py-1 text-sm">{keyState.note}</p>}
       <input className={`${field} font-bold`} value={test.title} onChange={(e) => onChange({ ...test, title: e.target.value })} aria-label="Test title" />
       {test.questions.map((q, i) => (
         <div key={i} className="grid grid-cols-[52px_64px_1fr] gap-2">
@@ -472,6 +585,13 @@ function Review({
   const a = script.audit!;
   const locked = script.status === "approved";
   const unresolved = a.questions.some((q) => script.marks[q.questionNo] === null || script.marks[q.questionNo] === undefined);
+  const [showConfident, setShowConfident] = useState(false);
+  const [zoom, setZoom] = useState<string | null>(null);
+  // Answers that need the teacher's eye come first; confident ones fold away until asked for.
+  const flaggedQs = a.questions.filter((q) => q.flagged);
+  const confidentQs = a.questions.filter((q) => !q.flagged);
+  const hideConfident = !showConfident && flaggedQs.length > 0 && confidentQs.length > 0;
+  const shownQs = hideConfident ? flaggedQs : [...flaggedQs, ...confidentQs];
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-ballpoint pb-2">
@@ -508,8 +628,27 @@ function Review({
           ))}
         </ul>
       )}
+      {script.pages.length > 0 && (
+        <ol className="flex gap-2 overflow-x-auto pb-1" aria-label="The script's pages; tap to enlarge">
+          {script.pages.map((p, i) => (
+            <li key={i} className="shrink-0">
+              <button onClick={() => setZoom(p)} aria-label={`Enlarge page ${i + 1}`} className="relative block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p} alt={`Page ${i + 1}`} className="h-24 w-[70px] border border-rule object-cover" />
+                <span className="absolute left-1 top-1 bg-booklet px-1 font-mono text-[10px]">{i + 1}</span>
+              </button>
+            </li>
+          ))}
+          <li className="self-center pl-1 text-xs text-graphite/60">Tap a page to compare with the reading.</li>
+        </ol>
+      )}
+      {flaggedQs.length > 0 && (
+        <p className="text-sm font-bold text-ballpoint">
+          {flaggedQs.length} of {a.questions.length} answers need your eye
+        </p>
+      )}
       <ol className="space-y-3">
-        {a.questions.map((q) => {
+        {shownQs.map((q) => {
           const tq = test.questions.find((x) => x.no === q.questionNo);
           return (
             <li key={q.questionNo} className={`ruled border border-rule py-3 pl-14 pr-3 ${q.flagged ? "outline-4 outline-highlight" : ""}`}>
@@ -569,16 +708,13 @@ function Review({
           );
         })}
       </ol>
-      <details className="border border-rule bg-booklet p-3">
-        <summary className="cursor-pointer text-sm font-bold">The pages</summary>
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {script.pages.map((p, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={i} src={p} alt={`Page ${i + 1}`} className="w-full border border-rule" />
-          ))}
-        </div>
-      </details>
+      {hideConfident && (
+        <button onClick={() => setShowConfident(true)} className="w-full border border-dashed border-ballpoint py-2 text-sm font-bold text-ballpoint">
+          Show the {confidentQs.length} confident answer{confidentQs.length === 1 ? "" : "s"} too
+        </button>
+      )}
       <CallLog calls={script.calls} />
+      {zoom && <Lightbox src={zoom} onClose={() => setZoom(null)} />}
     </div>
   );
 }
