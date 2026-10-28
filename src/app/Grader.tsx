@@ -194,7 +194,10 @@ export default function Grader() {
     setActiveId(s.id);
   }
 
-  const allApproved = scripts.some((s) => s.status === "approved") && scripts.every((s) => s.status === "approved" || (s.status === "capturing" && s.pages.length === 0));
+  // Export once every graded script is approved and nothing is mid-read. Scripts never graded
+  // (or that failed to read) are left out rather than blocking the register forever.
+  const graded = scripts.filter((s) => s.audit && s.status !== "grading");
+  const allApproved = graded.length > 0 && graded.every((s) => s.status === "approved") && !scripts.some((s) => s.status === "grading");
   const csv = allApproved ? toCsv(test, scripts.filter((s) => s.status === "approved").map((s) => ({ roll: s.roll, marks: s.marks }))) : null;
   const maxTotal = test.questions.reduce((n, q) => n + q.maxMarks, 0);
 

@@ -3,6 +3,7 @@
 import { admit } from "@/lib/guard";
 import { chatJson, hasNebiusKey, labelOf, MODELS } from "@/lib/nebius";
 import { audit } from "@/lib/auditor";
+import { markValue } from "@/lib/classwork";
 import { MARKER_SYSTEM, markerUser, READER_SYSTEM, readerText } from "@/lib/prompts";
 import type { GradeEvent, ModelCall, ProposedMark, Reading, TestPaper } from "@/lib/types";
 
@@ -70,9 +71,9 @@ export async function POST(req: Request): Promise<Response> {
             onCall,
           });
           readings = (out.answers ?? [])
-            .filter((a) => a && typeof a.questionNo === "string")
+            .filter((a) => a && (typeof a.questionNo === "string" || typeof a.questionNo === "number"))
             .map((a) => ({
-              questionNo: a.questionNo,
+              questionNo: String(a.questionNo), // models often send 1 rather than "1"
               text: String(a.text ?? ""),
               legibility: typeof a.legibility === "number" ? Math.max(0, Math.min(1, a.legibility)) : 0,
               present: a.present !== false && String(a.text ?? "").trim().length > 0,
@@ -99,8 +100,13 @@ export async function POST(req: Request): Promise<Response> {
             onCall,
           });
           marks = (out.marks ?? [])
-            .filter((m) => m && typeof m.questionNo === "string" && typeof m.awarded === "number")
-            .map((m) => ({ ...m, reason: String(m.reason ?? ""), confidence: typeof m.confidence === "number" ? m.confidence : 0 }));
+            .filter((m) => m && (typeof m.questionNo === "string" || typeof m.questionNo === "number") && markValue(m.awarded) !== null)
+            .map((m) => ({
+              questionNo: String(m.questionNo),
+              awarded: markValue(m.awarded)!, // "1.5", "1½" and 1.5 all count; the auditor caps and rounds
+              reason: String(m.reason ?? ""),
+              confidence: typeof m.confidence === "number" ? m.confidence : 0,
+            }));
           emit({ type: "step", step: "mark", status: "done", actor: labelOf(MODELS.ultra), detail: `${marks.length} marks proposed` });
         } catch {
           emit({ type: "step", step: "mark", status: "failed", actor: labelOf(MODELS.ultra), detail: "No marks proposed; mark by hand from the transcription" });

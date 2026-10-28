@@ -3,6 +3,7 @@
 import { admit } from "@/lib/guard";
 import { chatJson, hasNebiusKey, labelOf, MODELS } from "@/lib/nebius";
 import { KEY_SYSTEM } from "@/lib/prompts";
+import { markValue } from "@/lib/classwork";
 import type { ModelCall, Question } from "@/lib/types";
 import { ipOf, validPages } from "../_shared";
 
@@ -37,7 +38,7 @@ export async function POST(req: Request): Promise<Response> {
       .slice(0, 30)
       .map((q) => ({
         no: String(q.no).trim().slice(0, 8),
-        maxMarks: typeof q.maxMarks === "number" && q.maxMarks > 0 && q.maxMarks <= 100 ? q.maxMarks : 0,
+        maxMarks: ((m) => (m !== null && m > 0 && m <= 100 ? m : 0))(markValue(q.maxMarks)),
         prompt: String(q.prompt ?? "").slice(0, 1000),
         rubric: String(q.rubric ?? "").slice(0, 3000),
       }));

@@ -77,6 +77,17 @@ export function weakest(stats: QuestionStat[]): QuestionStat | null {
   return withData.reduce((w, s) => (s.share < w.share ? s : w));
 }
 
+// ---- Marks as models write them ----
+
+// 1.5, "1.5", "1½", "½" and "2" are marks; anything else (words, "1/2 + 1") is unread.
+export function markValue(v: unknown): number | null {
+  if (typeof v === "number") return Number.isFinite(v) && v >= 0 ? v : null;
+  if (typeof v !== "string") return null;
+  const m = v.trim().match(/^(\d*)(?:\.(\d+))?\s*(½)?$/);
+  if (!m || (!m[1] && !m[2] && !m[3])) return null;
+  return Number(m[1] || 0) + (m[2] ? Number(`0.${m[2]}`) : 0) + (m[3] ? 0.5 : 0);
+}
+
 // ---- Totalling check on a script the teacher has already marked ----
 
 export interface MarginRead {

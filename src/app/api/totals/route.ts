@@ -3,7 +3,7 @@
 // compares with the written total. Returns JSON (one model call, no streaming needed).
 import { admit } from "@/lib/guard";
 import { chatJson, hasNebiusKey, labelOf, MODELS } from "@/lib/nebius";
-import { checkTotals, type MarginRead } from "@/lib/classwork";
+import { checkTotals, markValue, type MarginRead } from "@/lib/classwork";
 import { TOTALS_SYSTEM, totalsText } from "@/lib/prompts";
 import type { ModelCall, TestPaper } from "@/lib/types";
 import { ipOf, validPages } from "../_shared";
@@ -43,13 +43,13 @@ export async function POST(req: Request): Promise<Response> {
       onCall: (c) => calls.push(c),
     });
     const read: MarginRead[] = (out.marks ?? [])
-      .filter((m) => m && typeof m.questionNo === "string")
+      .filter((m) => m && (typeof m.questionNo === "string" || typeof m.questionNo === "number"))
       .map((m) => ({
-        questionNo: m.questionNo,
-        mark: typeof m.mark === "number" && Number.isFinite(m.mark) ? m.mark : null,
+        questionNo: String(m.questionNo),
+        mark: markValue(m.mark),
         legibility: typeof m.legibility === "number" ? Math.max(0, Math.min(1, m.legibility)) : 0,
       }));
-    const written = typeof out.writtenTotal === "number" && Number.isFinite(out.writtenTotal) ? out.writtenTotal : null;
+    const written = markValue(out.writtenTotal);
     const tl = typeof out.totalLegibility === "number" ? out.totalLegibility : 0;
     return Response.json({ check: checkTotals(test, read, written, tl), calls, reader: labelOf(MODELS.superVl) });
   } catch {

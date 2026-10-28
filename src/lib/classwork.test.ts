@@ -71,3 +71,16 @@ test("cost per call list prices", () => {
   assert.ok(Math.abs(c.usd - 0.0039) < 1e-9);
   assert.match(formatCost(c.usd), /^\$0\.0039/);
 });
+
+test("marks as models write them", async () => {
+  const { markValue } = await import("./classwork");
+  assert.equal(markValue(1.5), 1.5);
+  assert.equal(markValue("1.5"), 1.5);
+  assert.equal(markValue("1½"), 1.5);
+  assert.equal(markValue("½"), 0.5);
+  assert.equal(markValue(" 2 "), 2);
+  assert.equal(markValue("two"), null);
+  assert.equal(markValue(""), null);
+  assert.equal(markValue(-1), null);
+  assert.equal(markValue(null), null);
+});
