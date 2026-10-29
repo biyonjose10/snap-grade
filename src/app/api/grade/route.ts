@@ -63,6 +63,7 @@ export async function POST(req: Request): Promise<Response> {
         try {
           const out = await chatJson<{ answers?: Reading[] }>({
             model: MODELS.superVl,
+            thinking: false, // copying text out, not reasoning
             step: "read",
             system: READER_SYSTEM,
             user: [{ type: "text", text: readerText(test, pages.length) }, ...pages.map((url) => ({ type: "image_url" as const, image_url: { url } }))],

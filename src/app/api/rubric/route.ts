@@ -26,6 +26,7 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const out = await chatJson<{ title?: string; questions?: Partial<Question>[] }>({
       model: MODELS.superVl,
+      thinking: false, // copying text out, not reasoning
       step: "read",
       system: KEY_SYSTEM,
       user: [{ type: "text", text: `The next ${pages.length} image(s) are the answer key.` }, ...pages.map((url) => ({ type: "image_url" as const, image_url: { url } }))],
