@@ -15,7 +15,7 @@ Everything marked **TODO** needs a real number, quote or clip before submitting.
 ### Story
 
 **Inspiration**
-Faculty at our college mark internal-test scripts by hand, a stack at a time, and re-evaluation requests often come down to a mark added up wrong. Reading the handwriting and checking it against the scheme of valuation is slow; the judgement is the teacher's. We wanted a first reader, not a grader. TODO: one faculty quote.
+Faculty mark internal-test scripts by hand, a stack at a time, and mistakes happen at scale: Bangalore University blacklisted 50 evaluators for erroneous marking (Deccan Herald, 9 Jan 2025), and universities run re-totalling as its own process because marks get added up wrong. Reading the handwriting and checking it against the scheme of valuation is slow; the judgement is the teacher's. We wanted a first reader, not a grader.
 
 **What it does**
 Snap each page; Nemotron 3.5 Super VL reads every answer; Nemotron 3 Ultra proposes a mark and a reason against the teacher's own rubric; code caps, rounds, totals and flags anything blank, unclear or uncertain. The teacher reviews flagged answers first, adjusts with −½/+½, approves, and moves to the next script. A totalling-check mode catches addition mistakes on scripts already marked by hand.
@@ -30,7 +30,8 @@ Next.js on Vercel. Super VL with thinking off reads pages, answer keys and margi
 
 **Accomplishments**
 - A full read → mark → audit in **10 s** for about **₹0.5** per script.
-- TODO: agreement with hand marking on 5 volunteer scripts (within ½ mark on X of Y answers; how many big gaps were already flagged).
+- On five synthetic test scripts written to known marks (handwriting-style fonts, not real handwriting): **within ½ mark on 20 of 20 answers, exact on 19**.
+- The totalling check caught a deliberate slip (written 9, marks add to 8.5); a photographed answer key became the rubric exactly.
 
 **What we learned**
 Vision and judgement are different jobs: Super VL transcribes reliably when it doesn't think, Ultra marks better when it does. Rubrics written as marking points ("statement (1), V = IR (1)") make the marker's reasons checkable at a glance.

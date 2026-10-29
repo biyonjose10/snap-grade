@@ -10,7 +10,7 @@ A teacher photographs each page of a student's script on their phone. **NVIDIA N
 
 ## The problem
 
-Indian college faculty mark stacks of handwritten internal-test scripts by hand, often over a weekend, and a mark added up wrong is a classic reason for re-evaluation requests. Marking needs a teacher's judgement, but reading forty scripts' worth of handwriting, checking each answer against the scheme of valuation and totalling it is slow, repetitive work.
+Indian college faculty mark stacks of handwritten internal-test scripts by hand, often over a weekend. Errors happen at scale: Bangalore University blacklisted 50 evaluators for erroneous marking of answer scripts ([Deccan Herald, 9 Jan 2025](https://www.deccanherald.com/india/karnataka/bengaluru/bangalore-university-blacklists-50-evaluators-for-erroneous-marking-of-answer-scripts-3347267)), and totalling mistakes are common enough that universities offer re-totalling separately from re-evaluation. Marking needs a teacher's judgement, but reading forty scripts' worth of handwriting, checking each answer against the scheme of valuation and totalling it is slow, repetitive work.
 
 ## What it does
 
@@ -41,7 +41,11 @@ All calls go through Token Factory's OpenAI-compatible API; images are sent as b
 
 - **29 Oct, real calls:** Super VL transcribed a test page exactly in 5.4 s (including "1/R = 1/4 + 1/6 = 5/12"). The full read → mark → audit took **10 s**. Ultra gave Q1 2/2, docked Q2 a mark for the missing heating-effect definition (and accepted Imax/1.414 as Imax/√2), gave Q4 2/2, and the audit flagged the blank Q3.
 - **Cost:** about **$0.006 per script** (≈ ₹0.5) at list prices.
-- **Agreement with hand marking:** TODO, measured on 5 mock scripts written by volunteers and hand-marked first.
+- **Synthetic benchmark (29 Oct, real calls):** five test scripts rendered in different handwriting-style fonts on ruled paper with tilt and noise (`scripts/synth-scripts.ps1`), each answer written to earn a known mark against the sample rubric (neat and complete; messy and partial; one question skipped and one wrong; a forgotten 1/R inversion; crossed-out first attempts). Graded through the real route (`scripts/bench.mts`): **within ½ mark on 20 of 20 answers, exact on 19**, all five totals within 1 mark; the skipped answer was flagged as blank and the crossed-out attempts were ignored. **These are not real student handwriting**; that test is still to come.
+- **Totalling check, real call:** on a script marked by hand with red margin marks 2, 1½, 3, 2 and a written total of 9, it read every mark and reported "Written total is 9, but the marks add up to 8.5".
+- **Answer key from a photo, real call:** a typed scheme of valuation became the test's four questions, marks and marking points exactly.
+- **Latency varies with load:** a page read took 5 s in the morning and 45–130 s in the afternoon of 29 Oct; a full script 10–45 s.
+- **Agreement with a teacher's hand marking on real scripts:** TODO.
 
 ## Run it locally
 
@@ -58,7 +62,7 @@ npm run smoke:vl -- path\to\page.jpg                          # one Super VL cal
 
 - **Not tested on real student handwriting yet** at the time of writing: the test page used a handwriting-style font. Messy handwriting, diagrams and crossed-out text will lower legibility; low-legibility answers are flagged for the teacher to read.
 - **The marker can be strict.** On a live test it gave 1/4 where a teacher might give 2, because the rubric asked for fuller descriptions. That's why every mark is a proposal and the agreement check exists.
-- **Totalling check and answer-key reading** are built and tested with sample data; their real-model runs come next.
+- **Totalling check and answer-key reading** have each been run for real once, on rendered test pages.
 - **Photos stay in the browser** and are sent only to be read; nothing is stored. Use dummy roll numbers.
 - **The spend guard is in-memory per server instance**: a brake, not a wall.
 

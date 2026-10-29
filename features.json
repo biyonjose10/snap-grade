@@ -74,7 +74,8 @@
       "tier": "must",
       "description": "Spend guard: per-IP limit + global daily ceiling",
       "test": "exceed a low ceiling locally; a friendly message appears and no model call is made",
-      "passes": false
+      "passes": true,
+      "evidence": "29 Oct: guard blocked the 6th local run in an hour with the friendly message, no model call made"
     },
     {
       "id": "B11",
@@ -95,21 +96,24 @@
       "tier": "must",
       "description": "Agreement rate vs. your hand marking on the 5 mock scripts, written in the README",
       "test": "compare the CSV with the hand marks; the number is in the README",
-      "passes": false
+      "passes": false,
+      "evidence": "Synthetic benchmark only so far: 20/20 within ½, 19 exact on 5 rendered scripts (not real handwriting); real hand-marked scripts still TODO"
     },
     {
       "id": "B14",
       "tier": "cut-if-late",
       "description": "Answer-key photo becomes the rubric (Super VL)",
       "test": "photograph a typed key; the rubric fields fill",
-      "passes": false
+      "passes": true,
+      "evidence": "29 Oct real call: typed key photo -> 4 questions, marks and marking points exact (bench)"
     },
     {
       "id": "B15",
       "tier": "cut-if-late",
       "description": "Totalling-check mode: read the teacher's own margin marks and catch addition errors",
       "test": "a script with a deliberate totalling error is caught",
-      "passes": false
+      "passes": true,
+      "evidence": "29 Oct real call: margin marks 2,1.5,3,2 read; 'Written total is 9, but the marks add up to 8.5'"
     },
     {
       "id": "B16",

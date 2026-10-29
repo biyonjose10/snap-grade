@@ -20,7 +20,7 @@ export function admit(ip: string): { ok: true } | { ok: false; reason: string } 
   const now = Date.now();
   const recent = (perIp.get(ip) ?? []).filter((t) => now - t < 3600_000);
   if (recent.length >= PER_IP_PER_HOUR) {
-    return { ok: false, reason: `You've run ${PER_IP_PER_HOUR} searches this hour. Please try again a bit later.` };
+    return { ok: false, reason: `You've graded ${PER_IP_PER_HOUR} scripts this hour on this demo. Please try again a bit later.` };
   }
   recent.push(now);
   perIp.set(ip, recent);
